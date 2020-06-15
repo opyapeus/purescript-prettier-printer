@@ -3,11 +3,13 @@ module Test.Prettier.Printer where
 import Prelude
 
 import Control.Monad.Gen (oneOf)
+import Data.Array (foldr, (..))
 import Data.NonEmpty ((:|))
 import Effect.Class (liftEffect)
-import Prettier.Printer (DOC, line, nest, nil, pretty, text)
+import Prettier.Printer (DOC, nest, line, nil, pretty, text)
 import Test.QuickCheck (class Arbitrary, arbitrary, quickCheck, (===))
 import Test.Spec (Spec, describe, it)
+import Test.Spec.Console (write)
 
 newtype DOC' = DOC' DOC
 
@@ -20,6 +22,19 @@ instance arbDOC' :: Arbitrary DOC' where
 
 spec :: Spec Unit
 spec = describe "Prettier.Printer" do
+  describe "overflow" do
+    it "stack safety nest" do
+      let
+        large = foldr (\_ -> nest 0) nil $ 0 .. 1_000_000
+        _ = pretty 0 large
+      pure unit
+    it "stack safety append" do
+      let
+        large = foldr (\_ -> (<>) nil) nil $ 0 .. 1_000_000
+        _ = pretty 0 large
+      pure unit
+    it "stack safety union" do
+      liftEffect $ write "TODO"
   describe "text" do
     it "is a homomorphism from string concatenation to document concatenation" do
       liftEffect $ quickCheck \w s t ->

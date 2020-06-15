@@ -34,6 +34,7 @@ module Prettier.Printer
 
 import Prelude
 
+import Control.Monad.Rec.Class (Step(..), tailRec)
 import Data.Array as Array
 import Data.Foldable (intercalate)
 import Data.List (List(Cons), (:))
@@ -98,16 +99,32 @@ copy i x = intercalate "" $ Array.replicate i x
 best :: Int -> Int -> DOC -> Doc
 best w k x = be w k $ List.singleton (Tuple 0 x)
 
+type Rec
+  = { acc :: Doc -> Doc
+    , rem :: List (Tuple Int DOC)
+    , k :: Int
+    }
+
 be :: Int -> Int -> List (Tuple Int DOC) -> Doc
-be w k List.Nil = Nil
-be w k (Cons (Tuple i NIL) z) = be w k z
-be w k (Cons (Tuple i (APPEND x y)) z) = be w k $ (Tuple i x) : (Tuple i y) : z
-be w k (Cons (Tuple i (NEST j x)) z) = be w k  $ (Tuple (i + j) x) : z
-be w k (Cons (Tuple i (TEXT s)) z) = Text s $ be w (k + String.length s) z
-be w k (Cons (Tuple i LINE) z) = Line i $ be w i z
-be w k (Cons (Tuple i (UNION x y)) z) =
-  let x' = be w k $ (Tuple i x) : z
-  in if fits (w - k) x' then x' else be w k $ (Tuple i y) : z
+be w k0 rem0 = tailRec go { acc: identity, rem: rem0, k: k0 } $ Nil
+  where
+  go :: Rec -> Step Rec (Doc -> Doc)
+  go { acc, rem, k } = case rem of
+    List.Nil -> Done acc
+    Cons (Tuple i doc) z -> case doc of
+      NIL -> Loop { acc, rem: z, k }
+      APPEND x y -> Loop { acc, rem: (Tuple i x) : (Tuple i y) : z, k }
+      NEST j x -> Loop { acc, rem: (Tuple (i + j) x) : z, k }
+      TEXT s -> Loop { acc: acc <<< Text s, rem: z, k: k + String.length s }
+      LINE -> Loop { acc: acc <<< Line i, rem: z, k: i }
+      UNION x y -> Loop { acc, rem: rem', k }
+        where
+        -- TODO: `be w k remx` is not stack-safe
+        rem' 
+          | fits (w - k) (be w k remx) = remx
+          | otherwise = remy
+        remx = (Tuple i x) : z
+        remy = (Tuple i y) : z
 
 fits :: Int -> Doc -> Boolean
 fits w x | w < 0 = false
