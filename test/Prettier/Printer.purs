@@ -6,10 +6,9 @@ import Control.Monad.Gen (oneOf)
 import Data.Array (foldr, (..))
 import Data.NonEmpty ((:|))
 import Effect.Class (liftEffect)
-import Prettier.Printer (DOC, nest, line, nil, pretty, text)
+import Prettier.Printer (DOC, besideOrBelow, line, nest, nil, pretty, text)
 import Test.QuickCheck (class Arbitrary, arbitrary, quickCheck, (===))
 import Test.Spec (Spec, describe, it)
-import Test.Spec.Console (write)
 
 newtype DOC' = DOC' DOC
 
@@ -34,7 +33,10 @@ spec = describe "Prettier.Printer" do
         _ = pretty 0 large
       pure unit
     it "stack safety union" do
-      liftEffect $ write "TODO"
+      let
+        large = foldr (\_ -> besideOrBelow nil) nil $ 0 .. 1_000
+        _ = pretty 0 large
+      pure unit
   describe "text" do
     it "is a homomorphism from string concatenation to document concatenation" do
       liftEffect $ quickCheck \w s t ->

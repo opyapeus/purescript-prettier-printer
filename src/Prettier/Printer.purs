@@ -117,20 +117,14 @@ be w k0 rem0 = tailRec go { acc: identity, rem: rem0, k: k0 } $ Nil
       NEST j x -> Loop { acc, rem: (Tuple (i + j) x) : z, k }
       TEXT s -> Loop { acc: acc <<< Text s, rem: z, k: k + String.length s }
       LINE -> Loop { acc: acc <<< Line i, rem: z, k: i }
-      UNION x y -> Loop { acc, rem: rem', k }
-        where
-        -- TODO: `be w k remx` is not stack-safe
-        rem' 
-          | fits (w - k) (be w k remx) = remx
-          | otherwise = remy
-        remx = (Tuple i x) : z
-        remy = (Tuple i y) : z
+      -- FIXME: fits = true, to avoid stack overflow for now.
+      UNION x y -> Loop { acc, rem: (Tuple i x) : z, k }
 
-fits :: Int -> Doc -> Boolean
-fits w x | w < 0 = false
-fits w Nil = true
-fits w (Text s x) = fits (w - String.length s) x
-fits w (Line i x) = true
+-- fits :: Int -> Doc -> Boolean
+-- fits w x | w < 0 = false
+-- fits w Nil = true
+-- fits w (Text s x) = fits (w - String.length s) x
+-- fits w (Line i x) = true
 
 pretty :: Int -> DOC -> String
 pretty w x = layout $ best w 0 x
